@@ -1,0 +1,31 @@
+replicaCount: 1
+
+image:
+  repository: kong
+  tag: "3.7"
+  pullPolicy: IfNotPresent
+
+env:
+  KONG_DATABASE: "off"
+  KONG_DECLARATIVE_CONFIG: /kong/declarative/kong.yml
+  KONG_CLUSTER_CERT: /etc/kong/pki/cp/tls.crt
+  KONG_CLUSTER_CERT_KEY: /etc/kong/pki/cp/tls.key
+  KONG_CLUSTER_TRUSTED_CERT: /etc/kong/pki/ca/intermediate.crt
+  KONG_CLUSTER_MTLS: "shared"
+
+deployment:
+  extraVolumes:
+    - name: kong-cp-pki
+      secret:
+        secretName: kong-cp-pki
+  extraVolumeMounts:
+    - name: kong-cp-pki
+      mountPath: /etc/kong/pki
+      readOnly: true
+
+extraEnvVars:
+  - name: KONG_NGINX_WORKER_PROCESSES
+    value: "2"
+
+service:
+  type: ClusterIP

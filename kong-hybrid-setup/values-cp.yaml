@@ -1,0 +1,304 @@
+# values-cp.yaml - Kong Control Plane Configuration
+# This configures Kong Gateway as a Control Plane node in hybrid mode
+
+# Image configuration
+image:
+  repository: kong/kong-gateway
+  tag: "3.11"
+  pullPolicy: IfNotPresent
+  # If using custom image with plugins, specify here:
+  # repository: your-registry/kong-custom
+  # tag: "3.11-with-plugins"
+
+# Custom image pull secrets (if using private registry)
+imagePullSecrets: []
+# - name: your-registry-secret
+
+# Deployment configuration
+deployment:
+  kong:
+    enabled: true
+
+  # Number of Control Plane replicas (recommended: 2-3 for HA)
+  replicaCount: 2
+
+  # Update strategy
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+
+# Disable Kong Ingress Controller (not needed for Control Plane)
+ingressController:
+  enabled: false
+
+# Environment variables for Kong Control Plane
+env:
+  # Hybrid mode configuration
+  role: control_plane
+  cluster_listen: "0.0.0.0:8005"
+  cluster_telemetry_listen: "0.0.0.0:8006"
+
+  # Cluster certificates for mTLS
+  cluster_cert: /etc/secrets/kong-cluster-cert/tls.crt
+  cluster_cert_key: /etc/secrets/kong-cluster-cert/tls.key
+
+  # Database configuration (PostgreSQL)
+  database: postgres
+  pg_host: postgres-postgresql
+  pg_port: 5432
+  pg_database: kong
+  pg_user: kong
+  pg_password: kong-password
+
+  # Admin API configuration
+  admin_listen: "0.0.0.0:8001, 0.0.0.0:8444 ssl"
+  admin_gui_listen: "0.0.0.0:8002, 0.0.0.0:8445 ssl"
+
+  # Enable Kong Manager GUI
+  admin_gui_url: "http://localhost:8002"
+  admin_gui_api_url: "http://localhost:8001"
+
+  # Plugin configuration (bundled + custom)
+  plugins: "bundled,api-version,custom-auth,request-logger"
+
+  # Logging configuration  
+  log_level: notice
+  proxy_access_log: /dev/stdout
+  admin_access_log: /dev/stdout
+  admin_gui_access_log: /dev/stdout
+  proxy_error_log: /dev/stderr
+  admin_error_log: /dev/stderr
+  admin_gui_error_log: /dev/stderr
+
+  # Security headers
+  headers: "off"
+  trusted_ips: "0.0.0.0/0,::/0"
+
+  # Performance tuning
+  nginx_worker_processes: "auto"
+  nginx_worker_connections: "1024"
+
+# Secret volumes for certificates and custom plugins
+secretVolumes:
+  - kong-cluster-cert
+  - kong-admin-cert
+  # - kong-custom-plugins  # Uncomment if using custom plugins via ConfigMap
+
+# Services configuration
+admin:
+  enabled: true
+  type: ClusterIP
+  clusterIP: ""
+
+  # Admin API service
+  http:
+    enabled: true
+    servicePort: 8001
+    containerPort: 8001
+
+  # Admin API HTTPS service  
+  tls:
+    enabled: true
+    servicePort: 8444
+    containerPort: 8444
+
+  ingress:
+    enabled: false
+    # Enable if you want external access to Admin API
+    # hostname: kong-admin.local
+    # annotations:
+    #   nginx.ingress.kubernetes.io/ssl-redirect: "false"
+
+# Kong Manager service
+manager:
+  enabled: true
+  type: ClusterIP
+
+  # Manager HTTP service
+  http:
+    enabled: true  
+    servicePort: 8002
+    containerPort: 8002
+
+  # Manager HTTPS service
+  tls:
+    enabled: true
+    servicePort: 8445
+    containerPort: 8445
+
+  ingress:
+    enabled: false
+    # Enable if you want external access to Kong Manager
+    # hostname: kong-manager.local
+
+# Cluster service for DP communication  
+cluster:
+  enabled: true
+  type: ClusterIP
+
+  # Cluster communication service
+  tls:
+    enabled: true
+    servicePort: 8005
+    containerPort: 8005
+
+# Cluster telemetry service
+clustertelemetry:
+  enabled: true
+  type: ClusterIP
+
+  # Cluster telemetry service  
+  tls:
+    enabled: true
+    servicePort: 8006
+    containerPort: 8006
+
+# Proxy service (disabled for Control Plane)
+proxy:
+  enabled: false
+
+# Portal service (disabled for OSS)
+portal:
+  enabled: false
+
+# Portal API service (disabled for OSS) 
+portalapi:
+  enabled: false
+
+# Resource limits and requests
+resources:
+  limits:
+    cpu: 2000m
+    memory: 2Gi
+  requests:
+    cpu: 500m
+    memory: 512Mi
+
+# Node affinity and pod anti-affinity for HA
+affinity:
+  podAntiAffinity:
+    preferredDuringSchedulingIgnoredDuringExecution:
+    - weight: 100
+      podAffinityTerm:
+        labelSelector:
+          matchExpressions:
+          - key: app.kubernetes.io/name
+            operator: In
+            values:
+            - kong
+          - key: app.kubernetes.io/component  
+            operator: In
+            values:
+            - app
+        topologyKey: kubernetes.io/hostname
+
+# Health checks
+readinessProbe:
+  httpGet:
+    path: "/status/ready"
+    port: status
+    scheme: HTTP
+  initialDelaySeconds: 5
+  timeoutSeconds: 5
+  periodSeconds: 10
+  successThreshold: 1
+  failureThreshold: 3
+
+livenessProbe:
+  httpGet:
+    path: "/status"
+    port: status  
+    scheme: HTTP
+  initialDelaySeconds: 5
+  timeoutSeconds: 5
+  periodSeconds: 10
+  successThreshold: 1
+  failureThreshold: 3
+
+# Pod Disruption Budget for HA
+podDisruptionBudget:
+  enabled: true
+  maxUnavailable: 1
+
+# Horizontal Pod Autoscaler
+autoscaling:
+  enabled: false
+  minReplicas: 2
+  maxReplicas: 5
+  targetCPUUtilizationPercentage: 70
+  # targetMemoryUtilizationPercentage: 70
+
+# Service Monitor for Prometheus
+serviceMonitor:
+  enabled: true
+  labels: {}
+  interval: 30s
+  namespace: ""
+  namespaceSelector: {}
+
+# Annotations
+podAnnotations:
+  prometheus.io/scrape: "true"
+  prometheus.io/port: "8100"
+  prometheus.io/path: "/metrics"
+
+# Security context
+securityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+  runAsGroup: 1000
+  fsGroup: 1000
+
+podSecurityContext:
+  fsGroup: 1000
+  runAsGroup: 1000
+  runAsNonRoot: true
+  runAsUser: 1000
+
+# Additional volumes and volume mounts
+extraVolumes: []
+# - name: custom-plugin-volume
+#   configMap:
+#     name: kong-custom-plugins
+
+extraVolumeMounts: []
+# - name: custom-plugin-volume
+#   mountPath: /opt/kong/plugins/custom
+#   readOnly: true
+
+# Migration jobs
+migrations:
+  preUpgrade: true
+  postUpgrade: true
+
+  # Job configuration  
+  jobAnnotations: {}
+  backoffLimit: 5
+
+  # Resources for migration jobs
+  resources:
+    limits:
+      cpu: 1000m
+      memory: 1Gi
+    requests:
+      cpu: 100m  
+      memory: 128Mi
+
+# Enterprise features (disabled for OSS)
+enterprise:
+  enabled: false
+
+# Custom plugins configuration
+plugins:
+  configMaps: []
+  # - pluginName: api-version
+  #   name: kong-plugin-api-version
+  secrets: []
+
+# Wait for database initialization
+waitImage:
+  repository: busybox
+  tag: latest
+  pullPolicy: IfNotPresent

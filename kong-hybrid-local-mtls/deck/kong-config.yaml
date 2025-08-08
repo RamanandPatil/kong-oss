@@ -1,0 +1,12 @@
+_format_version: "2.1"
+services:
+- name: example-service
+  url: "http://httpbin.org/anything"
+  routes:
+  - name: example-route
+    paths: ["/example"]
+
+plugins:
+- name: custom-plugin
+  service: example-service
+  config: {}

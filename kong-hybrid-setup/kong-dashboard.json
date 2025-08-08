@@ -1,0 +1,128 @@
+{
+  "dashboard": {
+    "id": null,
+    "title": "Kong Gateway Dashboard",
+    "tags": ["kong", "api-gateway"],
+    "style": "dark",
+    "timezone": "browser",
+    "refresh": "30s",
+    "time": {
+      "from": "now-1h",
+      "to": "now"
+    },
+    "panels": [
+      {
+        "id": 1,
+        "title": "Kong Requests per Second",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "rate(kong_http_requests_total[5m])",
+            "legendFormat": "{{service}} - {{method}}"
+          }
+        ],
+        "yAxes": [
+          {
+            "label": "Requests/sec"
+          }
+        ],
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 0,
+          "y": 0
+        }
+      },
+      {
+        "id": 2,
+        "title": "Kong Response Status Codes",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "rate(kong_http_status[5m])",
+            "legendFormat": "{{code}}"
+          }
+        ],
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 12,
+          "y": 0
+        }
+      },
+      {
+        "id": 3,
+        "title": "Kong Latency Percentiles",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.50, rate(kong_latency_bucket[5m]))",
+            "legendFormat": "50th percentile"
+          },
+          {
+            "expr": "histogram_quantile(0.95, rate(kong_latency_bucket[5m]))",
+            "legendFormat": "95th percentile"
+          },
+          {
+            "expr": "histogram_quantile(0.99, rate(kong_latency_bucket[5m]))",
+            "legendFormat": "99th percentile"
+          }
+        ],
+        "yAxes": [
+          {
+            "label": "Latency (ms)"
+          }
+        ],
+        "gridPos": {
+          "h": 8,
+          "w": 24,
+          "x": 0,
+          "y": 8
+        }
+      },
+      {
+        "id": 4,
+        "title": "Kong Memory Usage",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "kong_memory_lua_shared_dict_bytes",
+            "legendFormat": "{{shared_dict}}"
+          }
+        ],
+        "yAxes": [
+          {
+            "label": "Bytes"
+          }
+        ],
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 0,
+          "y": 16
+        }
+      },
+      {
+        "id": 5,
+        "title": "Kong Database Connections",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "kong_database_connections_available",
+            "legendFormat": "Available"
+          },
+          {
+            "expr": "kong_database_connections_used",
+            "legendFormat": "Used"
+          }
+        ],
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 12,
+          "y": 16
+        }
+      }
+    ]
+  }
+}

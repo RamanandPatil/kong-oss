@@ -1,0 +1,37 @@
+replicaCount: 2
+
+image:
+  repository: kong-custom
+  tag: "local"
+  pullPolicy: IfNotPresent
+
+env:
+  KONG_DATABASE: "off"
+  KONG_CLUSTER_CERT: /etc/kong/pki/dp/tls.crt
+  KONG_CLUSTER_CERT_KEY: /etc/kong/pki/dp/tls.key
+  KONG_CLUSTER_TRUSTED_CERT: /etc/kong/pki/ca/intermediate.crt
+  KONG_CLUSTER_MTLS: "shared"
+  KONG_CONTROL_PLANE: kong-cp-kong-admin.kong.svc.cluster.local:8005
+
+deployment:
+  extraVolumes:
+    - name: kong-dp-pki
+      secret:
+        secretName: kong-dp-pki
+    - name: kong-ca
+      secret:
+        secretName: kong-ca
+  extraVolumeMounts:
+    - name: kong-dp-pki
+      mountPath: /etc/kong/pki/dp
+      readOnly: true
+    - name: kong-ca
+      mountPath: /etc/kong/pki/ca
+      readOnly: true
+
+extraEnvVars:
+  - name: KONG_NGINX_WORKER_PROCESSES
+    value: "2"
+
+service:
+  type: ClusterIP
