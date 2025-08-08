@@ -1,0 +1,42 @@
+# Control Plane (CP) Helm Values
+fullnameOverride: "kong-cp"
+
+env:
+  role: control_plane
+  database: postgres
+  pg_host: "kong-postgresql.kong.svc.cluster.local" # K8s service name for Postgres
+  pg_user: "kong"
+  pg_password: "kong" # For simplicity in local setup; use secrets in prod
+  cluster_cert: "/etc/secrets/kong-cluster-cert/cluster.crt"
+  cluster_cert_key: "/etc/secrets/kong-cluster-cert/cluster.key"
+  nginx_worker_processes: "1"
+  lua_package_path: "/opt/?.lua;;" # For custom plugins
+
+# Expose Admin API and Cluster Sync Port
+proxy:
+  enabled: false # Disable proxy functionality on CP
+
+admin:
+  enabled: true
+  type: LoadBalancer
+  http:
+    enabled: true
+    servicePort: 8001
+    containerPort: 8001
+
+cluster:
+  enabled: true
+  type: ClusterIP
+  tls:
+    servicePort: 8005
+    containerPort: 8005
+
+# Mount the cluster certificate secret
+secretVolumes:
+  - kong-cluster-cert
+
+# Mount custom plugins from a ConfigMap
+plugins:
+  configMaps:
+    - name: kong-custom-plugins
+      pluginName: my-custom-plugin

@@ -1,0 +1,32 @@
+# Data Plane (DP) Helm Values
+fullnameOverride: "kong-dp"
+
+env:
+  role: data_plane
+  database: "off"
+  cluster_control_plane: "kong-cp-cluster.kong.svc.cluster.local:8005"
+  cluster_cert: "/etc/secrets/kong-cluster-cert/cluster.crt"
+  cluster_cert_key: "/etc/secrets/kong-cluster-cert/cluster.key"
+  lua_package_path: "/opt/?.lua;;" # For custom plugins
+
+# Expose the proxy for API traffic
+proxy:
+  enabled: true
+  type: LoadBalancer
+  http:
+    enabled: true
+    servicePort: 80
+    containerPort: 8080
+
+admin:
+  enabled: false # Disable admin API on DP
+
+# Mount the cluster certificate secret
+secretVolumes:
+  - kong-cluster-cert
+
+# Mount custom plugins from a ConfigMap
+plugins:
+  configMaps:
+    - name: kong-custom-plugins
+      pluginName: my-custom-plugin
